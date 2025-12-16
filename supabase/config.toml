@@ -1,0 +1,7 @@
+project_id = "hejuziknygenweuopegp"
+
+[functions.bootstrap]
+verify_jwt = false
+
+[functions.backup-database]
+verify_jwt = false
