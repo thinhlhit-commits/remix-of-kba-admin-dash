@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { RefreshCw, Plus, FileText, Upload, Trash2, Eye } from "lucide-react";
+import { RefreshCw, Plus, FileText, Upload, Trash2, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +33,8 @@ import { AssetImportDialog } from "./AssetImportDialog";
 import { ExportButtons } from "@/components/ExportButtons";
 import { exportToExcel, exportToPDF } from "@/lib/exportUtils";
 
+const ITEMS_PER_PAGE = 20;
+
 interface AssetMaster {
   id: string;
   asset_id: string;
@@ -44,7 +46,6 @@ interface AssetMaster {
   quantity_per_contract: number | null;
   installation_scope: string | null;
   notes: string | null;
-  current_location: string | null;
 }
 
 export function AssetMasterList() {
@@ -56,13 +57,14 @@ export function AssetMasterList() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<AssetMaster | null>(null);
   const [deletingAsset, setDeletingAsset] = useState<AssetMaster | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchAssets = async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from("asset_master_data")
-        .select("id, asset_id, asset_name, brand, unit, quantity_supplied_previous, quantity_requested, quantity_per_contract, installation_scope, notes, current_location")
+        .select("id, asset_id, asset_name, brand, unit, quantity_supplied_previous, quantity_requested, quantity_per_contract, installation_scope, notes")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -83,6 +85,17 @@ export function AssetMasterList() {
       String(value).toLowerCase().includes(searchQuery.toLowerCase())
     )
   );
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredAssets.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedAssets = filteredAssets.slice(startIndex, endIndex);
 
   const handleEdit = (asset: AssetMaster) => {
     setEditingAsset(asset);
@@ -242,7 +255,6 @@ export function AssetMasterList() {
               <TableHead className="text-right">KL còn lại</TableHead>
               <TableHead className="text-right">% KL yêu cầu</TableHead>
               <TableHead>Phạm vi lắp đặt</TableHead>
-              <TableHead>Vị trí hiện tại</TableHead>
               <TableHead>Ghi chú</TableHead>
               <TableHead className="w-20">Thao tác</TableHead>
             </TableRow>
@@ -250,25 +262,25 @@ export function AssetMasterList() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={14} className="text-center py-8">
+                <TableCell colSpan={13} className="text-center py-8">
                   Đang tải...
                 </TableCell>
               </TableRow>
             ) : filteredAssets.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={14} className="text-center py-8">
+                <TableCell colSpan={13} className="text-center py-8">
                   Chưa có dữ liệu
                 </TableCell>
               </TableRow>
             ) : (
-              filteredAssets.map((asset, index) => {
+              paginatedAssets.map((asset, index) => {
                 const cumulative = getCumulativeQuantity(asset);
                 const remaining = getRemainingQuantity(asset);
                 const percentage = getPercentage(asset);
                 
                 return (
                   <TableRow key={asset.id}>
-                    <TableCell className="font-medium">{index + 1}</TableCell>
+                    <TableCell className="font-medium">{startIndex + index + 1}</TableCell>
                     <TableCell>{asset.asset_name}</TableCell>
                     <TableCell>{asset.brand || "-"}</TableCell>
                     <TableCell>{asset.unit || "-"}</TableCell>
@@ -304,11 +316,6 @@ export function AssetMasterList() {
                           </PopoverContent>
                         </Popover>
                       ) : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                        {asset.current_location || "Kho"}
-                      </span>
                     </TableCell>
                     <TableCell className="max-w-[120px]">
                       {asset.notes ? (
@@ -351,6 +358,57 @@ export function AssetMasterList() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Hiển thị {startIndex + 1}-{Math.min(endIndex, filteredAssets.length)} trong tổng số {filteredAssets.length} vật tư
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(page => {
+                  if (totalPages <= 7) return true;
+                  if (page === 1 || page === totalPages) return true;
+                  if (Math.abs(page - currentPage) <= 1) return true;
+                  return false;
+                })
+                .map((page, idx, arr) => (
+                  <span key={page} className="flex items-center">
+                    {idx > 0 && arr[idx - 1] !== page - 1 && (
+                      <span className="px-2 text-muted-foreground">...</span>
+                    )}
+                    <Button
+                      variant={currentPage === page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                      className="w-8 h-8 p-0"
+                    >
+                      {page}
+                    </Button>
+                  </span>
+                ))}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       <AssetMasterDialog
         open={dialogOpen}
