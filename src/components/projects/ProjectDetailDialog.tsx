@@ -80,13 +80,38 @@ export const ProjectDetailDialog = ({
   });
 
   const { data: allUsers } = useQuery({
-    queryKey: ["all-users"],
+    queryKey: ["all-users-combined"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Fetch profiles (users with accounts)
+      const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("id, full_name");
-      if (error) throw error;
-      return data;
+      if (profilesError) throw profilesError;
+
+      // Fetch employees (including those without accounts)
+      const { data: employees, error: employeesError } = await supabase
+        .from("employees")
+        .select("id, full_name, user_id");
+      if (employeesError) throw employeesError;
+
+      // Combine: prioritize employees with user_id, then add remaining profiles
+      const userMap = new Map<string, { id: string; full_name: string; type: string }>();
+      
+      // Add employees with user_id first (they can be added as team members)
+      employees?.forEach(emp => {
+        if (emp.user_id) {
+          userMap.set(emp.user_id, { id: emp.user_id, full_name: emp.full_name, type: 'employee' });
+        }
+      });
+
+      // Add profiles that aren't already in the map
+      profiles?.forEach(profile => {
+        if (!userMap.has(profile.id)) {
+          userMap.set(profile.id, { id: profile.id, full_name: profile.full_name, type: 'profile' });
+        }
+      });
+
+      return Array.from(userMap.values());
     },
     enabled: open,
   });

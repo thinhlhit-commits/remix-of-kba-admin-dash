@@ -125,7 +125,7 @@ export function ContractsList({ filterType }: ContractsListProps) {
     return new Intl.NumberFormat('vi-VN').format(value);
   };
 
-  const handleExportContracts = (format: "excel" | "pdf") => {
+  const handleExportContracts = async (format: "excel" | "pdf") => {
     const options = {
       title: filterType === "appendix" ? "Báo cáo Phụ lục Hợp đồng" : "Báo cáo Hợp đồng",
       filename: filterType === "appendix" ? "bao_cao_phu_luc" : "bao_cao_hop_dong",
@@ -136,7 +136,11 @@ export function ContractsList({ filterType }: ContractsListProps) {
         { label: "Tổng giá trị", value: formatCurrency(filteredContracts.reduce((s, c) => s + Number(c.contract_value || 0), 0)) + " đ" },
       ],
     };
-    format === "excel" ? exportToExcel(options) : exportToPDF(options);
+    if (format === "excel") {
+      exportToExcel(options);
+    } else {
+      await exportToPDF(options);
+    }
   };
 
   return (

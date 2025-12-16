@@ -8,6 +8,17 @@ import { useToast } from "@/hooks/use-toast";
 import { InventoryItemDialog } from "./InventoryItemDialog";
 import { ExportButtons } from "@/components/ExportButtons";
 import { exportToExcel, exportToPDF, inventoryExportConfig } from "@/lib/exportUtils";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
+
+const ITEMS_PER_PAGE = 20;
 
 interface InventoryItem {
   id: string;
@@ -30,6 +41,7 @@ export const InventoryList = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     fetchItems();
@@ -65,6 +77,32 @@ export const InventoryList = () => {
     item.product_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedItems = filteredItems.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const getVisiblePages = () => {
+    const pages: (number | 'ellipsis')[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push('ellipsis');
+      for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+        pages.push(i);
+      }
+      if (currentPage < totalPages - 2) pages.push('ellipsis');
+      pages.push(totalPages);
+    }
+    return pages;
+  };
+
   const handleEdit = (item: InventoryItem) => {
     setEditingItem(item);
     setDialogOpen(true);
@@ -76,7 +114,7 @@ export const InventoryList = () => {
     fetchItems();
   };
 
-  const handleExportInventory = (format: "excel" | "pdf") => {
+  const handleExportInventory = async (format: "excel" | "pdf") => {
     const options = {
       title: "Báo cáo Tồn kho Vật tư",
       filename: "bao_cao_ton_kho",
@@ -87,7 +125,11 @@ export const InventoryList = () => {
         { label: "Tổng tồn kho", value: filteredItems.reduce((s, i) => s + Number(i.stock_quantity || 0), 0).toString() },
       ],
     };
-    format === "excel" ? exportToExcel(options) : exportToPDF(options);
+    if (format === "excel") {
+      exportToExcel(options);
+    } else {
+      await exportToPDF(options);
+    }
   };
 
   return (
@@ -143,7 +185,7 @@ export const InventoryList = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredItems.map((item) => (
+              {paginatedItems.map((item) => (
                 <TableRow key={item.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleEdit(item)}>
                   <TableCell className="font-medium">{item.product_code}</TableCell>
                   <TableCell className="text-primary">{item.product_name}</TableCell>
@@ -163,6 +205,46 @@ export const InventoryList = () => {
               ))}
             </TableBody>
           </Table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Hiển thị {startIndex + 1}-{Math.min(startIndex + ITEMS_PER_PAGE, filteredItems.length)} / {filteredItems.length} sản phẩm
+          </p>
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+              {getVisiblePages().map((page, idx) => (
+                <PaginationItem key={idx}>
+                  {page === 'ellipsis' ? (
+                    <PaginationEllipsis />
+                  ) : (
+                    <PaginationLink
+                      onClick={() => setCurrentPage(page)}
+                      isActive={currentPage === page}
+                      className="cursor-pointer"
+                    >
+                      {page}
+                    </PaginationLink>
+                  )}
+                </PaginationItem>
+              ))}
+              <PaginationItem>
+                <PaginationNext 
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </div>
       )}
 

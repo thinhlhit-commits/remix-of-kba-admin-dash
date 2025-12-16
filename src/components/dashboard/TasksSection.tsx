@@ -282,12 +282,18 @@ export const TasksSection = () => {
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
-  const handleExportTasks = (format: "excel" | "pdf") => {
-    const exportData = filteredTasks.map(task => ({
-      ...task,
-      project_name: task.projects?.name || "",
-      priority: task.priority === "low" ? "Thấp" : task.priority === "medium" ? "Trung bình" : task.priority === "high" ? "Cao" : task.priority,
-    }));
+  const handleExportTasks = async (format: "excel" | "pdf") => {
+    const exportData = filteredTasks.map(task => {
+      const assigneeName = task.assigned_to 
+        ? employees.find(e => e.id === task.assigned_to)?.full_name || "Chưa rõ"
+        : "Chưa phân công";
+      return {
+        ...task,
+        project_name: task.projects?.name || "",
+        assignee_name: assigneeName,
+        priority: task.priority === "low" ? "Thấp" : task.priority === "medium" ? "Trung bình" : task.priority === "high" ? "Cao" : task.priority,
+      };
+    });
 
     const options = {
       title: "Danh sách nhiệm vụ",
@@ -299,7 +305,7 @@ export const TasksSection = () => {
     if (format === "excel") {
       exportToExcel(options);
     } else {
-      exportToPDF(options);
+      await exportToPDF(options);
     }
   };
 

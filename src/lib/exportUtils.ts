@@ -1,7 +1,7 @@
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-
+import { loadRobotoFont, arrayBufferToBase64 } from "./pdfFonts";
 interface ExportColumn {
   header: string;
   key: string;
@@ -100,12 +100,30 @@ export const exportToExcel = ({ title, filename, columns, data, summary }: Expor
   XLSX.writeFile(wb, `${filename}_${new Date().toISOString().split("T")[0]}.xlsx`);
 };
 
-export const exportToPDF = ({ title, filename, columns, data, summary }: ExportOptions): void => {
+export const exportToPDF = async ({ title, filename, columns, data, summary }: ExportOptions): Promise<void> => {
   const doc = new jsPDF({
     orientation: columns.length > 5 ? "landscape" : "portrait",
     unit: "mm",
     format: "a4",
   });
+
+  // Load and add Roboto font with Vietnamese support
+  try {
+    const fonts = await loadRobotoFont();
+    const normalBase64 = arrayBufferToBase64(fonts.normal);
+    const boldBase64 = arrayBufferToBase64(fonts.bold);
+    
+    doc.addFileToVFS("Roboto-Regular.ttf", normalBase64);
+    doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
+    
+    doc.addFileToVFS("Roboto-Bold.ttf", boldBase64);
+    doc.addFont("Roboto-Bold.ttf", "Roboto", "bold");
+    
+    doc.setFont("Roboto");
+  } catch (error) {
+    console.warn("Could not load Roboto font, using default font:", error);
+    doc.setFont("helvetica");
+  }
 
   // Add title
   doc.setFontSize(16);
@@ -129,6 +147,7 @@ export const exportToPDF = ({ title, filename, columns, data, summary }: ExportO
     styles: {
       fontSize: 8,
       cellPadding: 2,
+      font: "Roboto",
     },
     headStyles: {
       fillColor: [41, 128, 185],

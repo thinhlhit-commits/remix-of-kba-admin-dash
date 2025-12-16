@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
@@ -21,6 +22,11 @@ interface Employee {
   certificate_expiry_date: string | null;
 }
 
+interface UserProfile {
+  id: string;
+  full_name: string;
+}
+
 interface EmployeeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -30,6 +36,8 @@ interface EmployeeDialogProps {
 
 export const EmployeeDialog = ({ open, onOpenChange, employee, onSuccess }: EmployeeDialogProps) => {
   const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     full_name: "",
     date_of_birth: "",
@@ -45,6 +53,18 @@ export const EmployeeDialog = ({ open, onOpenChange, employee, onSuccess }: Empl
   const [idCardFile, setIdCardFile] = useState<File | null>(null);
   const { toast } = useToast();
 
+  // Fetch available user accounts
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .order("full_name");
+      if (data) setUsers(data);
+    };
+    if (open) fetchUsers();
+  }, [open]);
+
   useEffect(() => {
     if (employee) {
       setFormData({
@@ -58,6 +78,7 @@ export const EmployeeDialog = ({ open, onOpenChange, employee, onSuccess }: Empl
         password: "",
         certificate_expiry_date: employee.certificate_expiry_date || "",
       });
+      setSelectedUserId(employee.user_id);
     } else {
       setFormData({
         full_name: "",
@@ -70,6 +91,7 @@ export const EmployeeDialog = ({ open, onOpenChange, employee, onSuccess }: Empl
         password: "",
         certificate_expiry_date: "",
       });
+      setSelectedUserId(null);
     }
   }, [employee]);
 
@@ -131,8 +153,11 @@ export const EmployeeDialog = ({ open, onOpenChange, employee, onSuccess }: Empl
         idCardUrl = await uploadPhoto(idCardFile, "id-cards");
       }
 
+      // For editing, use selectedUserId; for new employee, use userId from account creation
+      const finalUserId = employee ? selectedUserId : userId;
+
       const employeeData = {
-        user_id: userId,
+        user_id: finalUserId,
         full_name: formData.full_name,
         date_of_birth: formData.date_of_birth || null,
         date_joined: formData.date_joined,
@@ -245,7 +270,27 @@ export const EmployeeDialog = ({ open, onOpenChange, employee, onSuccess }: Empl
               />
             </div>
 
-            {!employee && (
+            {employee ? (
+              <div>
+                <Label htmlFor="user_account">Liên kết tài khoản</Label>
+                <Select
+                  value={selectedUserId || "none"}
+                  onValueChange={(value) => setSelectedUserId(value === "none" ? null : value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn tài khoản người dùng" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background z-50">
+                    <SelectItem value="none">-- Không liên kết --</SelectItem>
+                    {users.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
               <>
                 <div>
                   <Label htmlFor="email">Email đăng nhập</Label>

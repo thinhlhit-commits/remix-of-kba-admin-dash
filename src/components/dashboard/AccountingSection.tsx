@@ -118,7 +118,7 @@ export const AccountingSection = () => {
     return new Intl.NumberFormat("vi-VN").format(amount) + " đ";
   };
 
-  const handleExportTransactions = (format: "excel" | "pdf") => {
+  const handleExportTransactions = async (format: "excel" | "pdf") => {
     const options = {
       title: "Báo cáo Giao dịch Kế toán",
       filename: "bao_cao_giao_dich",
@@ -130,7 +130,11 @@ export const AccountingSection = () => {
         { label: "Lợi nhuận", value: formatCurrency(stats.profit) },
       ],
     };
-    format === "excel" ? exportToExcel(options) : exportToPDF(options);
+    if (format === "excel") {
+      exportToExcel(options);
+    } else {
+      await exportToPDF(options);
+    }
   };
 
   return (

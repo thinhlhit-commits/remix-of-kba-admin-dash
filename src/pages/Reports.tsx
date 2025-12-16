@@ -235,7 +235,7 @@ export default function Reports() {
   };
 
   // Export handlers
-  const handleExportProjects = (format: "excel" | "pdf") => {
+  const handleExportProjects = async (format: "excel" | "pdf") => {
     const options = {
       title: "Báo cáo Dự án",
       filename: "bao_cao_du_an",
@@ -246,10 +246,14 @@ export default function Reports() {
         { label: "Tổng ngân sách", value: formatCurrency(rawProjects.reduce((s, p) => s + Number(p.budget || 0), 0)) },
       ],
     };
-    format === "excel" ? exportToExcel(options) : exportToPDF(options);
+    if (format === "excel") {
+      exportToExcel(options);
+    } else {
+      await exportToPDF(options);
+    }
   };
 
-  const handleExportEmployees = (format: "excel" | "pdf") => {
+  const handleExportEmployees = async (format: "excel" | "pdf") => {
     const options = {
       title: "Báo cáo Nhân sự",
       filename: "bao_cao_nhan_su",
@@ -259,10 +263,14 @@ export default function Reports() {
         { label: "Tổng số nhân viên", value: rawEmployees.length.toString() },
       ],
     };
-    format === "excel" ? exportToExcel(options) : exportToPDF(options);
+    if (format === "excel") {
+      exportToExcel(options);
+    } else {
+      await exportToPDF(options);
+    }
   };
 
-  const handleExportTransactions = (format: "excel" | "pdf") => {
+  const handleExportTransactions = async (format: "excel" | "pdf") => {
     const options = {
       title: "Báo cáo Giao dịch Kế toán",
       filename: "bao_cao_ke_toan",
@@ -274,10 +282,14 @@ export default function Reports() {
         { label: "Lợi nhuận", value: formatCurrency(financialSummary.profit) },
       ],
     };
-    format === "excel" ? exportToExcel(options) : exportToPDF(options);
+    if (format === "excel") {
+      exportToExcel(options);
+    } else {
+      await exportToPDF(options);
+    }
   };
 
-  const handleExportContracts = (format: "excel" | "pdf") => {
+  const handleExportContracts = async (format: "excel" | "pdf") => {
     const options = {
       title: "Báo cáo Hợp đồng",
       filename: "bao_cao_hop_dong",
@@ -288,10 +300,14 @@ export default function Reports() {
         { label: "Tổng giá trị", value: formatCurrency(rawContracts.reduce((s, c) => s + Number(c.contract_value || 0), 0)) },
       ],
     };
-    format === "excel" ? exportToExcel(options) : exportToPDF(options);
+    if (format === "excel") {
+      exportToExcel(options);
+    } else {
+      await exportToPDF(options);
+    }
   };
 
-  const handleExportInventory = (format: "excel" | "pdf") => {
+  const handleExportInventory = async (format: "excel" | "pdf") => {
     const options = {
       title: "Báo cáo Tồn kho",
       filename: "bao_cao_ton_kho",
@@ -302,10 +318,14 @@ export default function Reports() {
         { label: "Tổng tồn kho", value: rawInventory.reduce((s, i) => s + Number(i.stock_quantity || 0), 0).toString() },
       ],
     };
-    format === "excel" ? exportToExcel(options) : exportToPDF(options);
+    if (format === "excel") {
+      exportToExcel(options);
+    } else {
+      await exportToPDF(options);
+    }
   };
 
-  const handleExportAssets = (format: "excel" | "pdf") => {
+  const handleExportAssets = async (format: "excel" | "pdf") => {
     const options = {
       title: "Báo cáo Tài sản",
       filename: "bao_cao_tai_san",
@@ -317,14 +337,18 @@ export default function Reports() {
         { label: "Tổng giá trị còn lại", value: formatCurrency(rawAssets.reduce((s, a) => s + Number(a.nbv || 0), 0)) },
       ],
     };
-    format === "excel" ? exportToExcel(options) : exportToPDF(options);
+    if (format === "excel") {
+      exportToExcel(options);
+    } else {
+      await exportToPDF(options);
+    }
   };
 
-  const handleExportAll = (format: "excel" | "pdf") => {
-    handleExportProjects(format);
-    handleExportEmployees(format);
-    handleExportTransactions(format);
-    handleExportInventory(format);
+  const handleExportAll = async (format: "excel" | "pdf") => {
+    await handleExportProjects(format);
+    await handleExportEmployees(format);
+    await handleExportTransactions(format);
+    await handleExportInventory(format);
   };
 
   return (

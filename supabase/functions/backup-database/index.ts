@@ -9,7 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const BACKUP_EMAIL = "nh3571412@gmail.com";
+const BACKUP_EMAIL = "zhunter1501@gmail.com";
 
 // Tables to backup
 const TABLES_TO_BACKUP = [

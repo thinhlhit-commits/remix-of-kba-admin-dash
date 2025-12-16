@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Search, Eye, Pencil, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Search, Eye, Pencil, Trash2, UserCheck, UserX } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { EmployeeDialog } from "./EmployeeDialog";
@@ -87,7 +88,7 @@ export const EmployeeList = () => {
     emp.full_name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleExportEmployees = (format: "excel" | "pdf") => {
+  const handleExportEmployees = async (format: "excel" | "pdf") => {
     const options = {
       title: "Báo cáo Nhân sự",
       filename: "bao_cao_nhan_su",
@@ -97,7 +98,11 @@ export const EmployeeList = () => {
         { label: "Tổng số nhân viên", value: filteredEmployees.length.toString() },
       ],
     };
-    format === "excel" ? exportToExcel(options) : exportToPDF(options);
+    if (format === "excel") {
+      exportToExcel(options);
+    } else {
+      await exportToPDF(options);
+    }
   };
 
   return (
@@ -138,6 +143,7 @@ export const EmployeeList = () => {
                 <TableRow>
                   <TableHead>STT</TableHead>
                   <TableHead>Họ tên</TableHead>
+                  <TableHead>Tài khoản</TableHead>
                   <TableHead>Ngày sinh</TableHead>
                   <TableHead>Ngày vào làm</TableHead>
                   <TableHead>Chức vụ</TableHead>
@@ -148,13 +154,13 @@ export const EmployeeList = () => {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center">
+                    <TableCell colSpan={8} className="text-center">
                       Đang tải...
                     </TableCell>
                   </TableRow>
                 ) : filteredEmployees.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center">
+                    <TableCell colSpan={8} className="text-center">
                       Chưa có nhân viên
                     </TableCell>
                   </TableRow>
@@ -163,6 +169,19 @@ export const EmployeeList = () => {
                     <TableRow key={employee.id}>
                       <TableCell>{index + 1}</TableCell>
                       <TableCell className="font-medium">{employee.full_name}</TableCell>
+                      <TableCell>
+                        {employee.user_id ? (
+                          <Badge variant="default" className="gap-1">
+                            <UserCheck className="w-3 h-3" />
+                            Đã liên kết
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="gap-1">
+                            <UserX className="w-3 h-3" />
+                            Chưa liên kết
+                          </Badge>
+                        )}
+                      </TableCell>
                       <TableCell>
                         {employee.date_of_birth
                           ? format(new Date(employee.date_of_birth), "dd/MM/yyyy")

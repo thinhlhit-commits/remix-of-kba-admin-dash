@@ -59,11 +59,41 @@ export const ClientRequirementsTab = ({ projectId }: ClientRequirementsTabProps)
   });
 
   const { data: users = [] } = useQuery({
-    queryKey: ["users"],
+    queryKey: ["all-users-for-selection"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("*");
-      if (error) throw error;
-      return data;
+      // Fetch employees
+      const { data: employees, error: empError } = await supabase
+        .from("employees")
+        .select("id, full_name, user_id")
+        .order("full_name");
+      if (empError) throw empError;
+
+      // Fetch profiles (users with accounts)
+      const { data: profiles, error: profError } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url");
+      if (profError) throw profError;
+
+      // Combine: all employees + profiles that aren't already in employees
+      const usersMap = new Map<string, { id: string; full_name: string; avatar_url: string | null }>();
+      
+      // Add all employees (use user_id if available, otherwise employee id)
+      employees?.forEach(emp => {
+        const userId = emp.user_id || emp.id;
+        usersMap.set(userId, { id: userId, full_name: emp.full_name, avatar_url: null });
+      });
+
+      // Add profiles that aren't already in the map (or update avatar if exists)
+      profiles?.forEach(prof => {
+        if (usersMap.has(prof.id)) {
+          const existing = usersMap.get(prof.id)!;
+          existing.avatar_url = prof.avatar_url;
+        } else {
+          usersMap.set(prof.id, { id: prof.id, full_name: prof.full_name, avatar_url: prof.avatar_url });
+        }
+      });
+
+      return Array.from(usersMap.values()).sort((a, b) => a.full_name.localeCompare(b.full_name));
     },
   });
 

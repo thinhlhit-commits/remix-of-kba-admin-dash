@@ -44,6 +44,7 @@ interface AssetMaster {
   quantity_per_contract: number | null;
   installation_scope: string | null;
   notes: string | null;
+  current_location: string | null;
 }
 
 export function AssetMasterList() {
@@ -61,7 +62,7 @@ export function AssetMasterList() {
       setLoading(true);
       const { data, error } = await supabase
         .from("asset_master_data")
-        .select("id, asset_id, asset_name, brand, unit, quantity_supplied_previous, quantity_requested, quantity_per_contract, installation_scope, notes")
+        .select("id, asset_id, asset_name, brand, unit, quantity_supplied_previous, quantity_requested, quantity_per_contract, installation_scope, notes, current_location")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -137,7 +138,7 @@ export function AssetMasterList() {
     return (cumulative / contract) * 100;
   };
 
-  const handleExportAssets = (format: "excel" | "pdf") => {
+  const handleExportAssets = async (format: "excel" | "pdf") => {
     const exportData = filteredAssets.map((asset, index) => ({
       STT: index + 1,
       "Tên Vật tư, Quy cách": asset.asset_name,
@@ -175,7 +176,11 @@ export function AssetMasterList() {
         { label: "Tổng số vật tư", value: filteredAssets.length.toString() },
       ],
     };
-    format === "excel" ? exportToExcel(options) : exportToPDF(options);
+    if (format === "excel") {
+      exportToExcel(options);
+    } else {
+      await exportToPDF(options);
+    }
   };
 
   return (
@@ -237,6 +242,7 @@ export function AssetMasterList() {
               <TableHead className="text-right">KL còn lại</TableHead>
               <TableHead className="text-right">% KL yêu cầu</TableHead>
               <TableHead>Phạm vi lắp đặt</TableHead>
+              <TableHead>Vị trí hiện tại</TableHead>
               <TableHead>Ghi chú</TableHead>
               <TableHead className="w-20">Thao tác</TableHead>
             </TableRow>
@@ -244,13 +250,13 @@ export function AssetMasterList() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={13} className="text-center py-8">
+                <TableCell colSpan={14} className="text-center py-8">
                   Đang tải...
                 </TableCell>
               </TableRow>
             ) : filteredAssets.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={13} className="text-center py-8">
+                <TableCell colSpan={14} className="text-center py-8">
                   Chưa có dữ liệu
                 </TableCell>
               </TableRow>
@@ -298,6 +304,11 @@ export function AssetMasterList() {
                           </PopoverContent>
                         </Popover>
                       ) : "-"}
+                    </TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                        {asset.current_location || "Kho"}
+                      </span>
                     </TableCell>
                     <TableCell className="max-w-[120px]">
                       {asset.notes ? (

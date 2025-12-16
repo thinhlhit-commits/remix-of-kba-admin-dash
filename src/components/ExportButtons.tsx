@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 interface ExportButtonsProps {
   onExportExcel: () => void;
-  onExportPDF: () => void;
+  onExportPDF: () => void | Promise<void>;
   disabled?: boolean;
   size?: "default" | "sm" | "lg" | "icon";
 }
@@ -31,9 +31,9 @@ export const ExportButtons = ({
     }
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     try {
-      onExportPDF();
+      await onExportPDF();
       toast.success("Đã xuất file PDF thành công");
     } catch (error) {
       console.error("Export PDF error:", error);

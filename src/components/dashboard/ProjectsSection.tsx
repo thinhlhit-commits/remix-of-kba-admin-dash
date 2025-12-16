@@ -228,14 +228,18 @@ export const ProjectsSection = () => {
     on_hold: "Tạm dừng",
   };
 
-  const handleExportProjects = (format: "excel" | "pdf") => {
+  const handleExportProjects = async (format: "excel" | "pdf") => {
     const options = {
       title: "Báo cáo Dự án",
       filename: "bao_cao_du_an",
       ...projectExportConfig,
       data: projects || [],
     };
-    format === "excel" ? exportToExcel(options) : exportToPDF(options);
+    if (format === "excel") {
+      exportToExcel(options);
+    } else {
+      await exportToPDF(options);
+    }
   };
 
   return (

@@ -95,7 +95,7 @@ const Login = () => {
 
         <Card className="shadow-lg border-border">
           <CardHeader className="bg-primary text-primary-foreground rounded-t-lg">
-            <h2 className="text-xl font-semibold text-center">ĐĂNG NHẬP HỆ THỐNG</h2>
+            <h2 className="text-xl font-semibold text-center">ĐĂNG NHẬP</h2>
           </CardHeader>
           <CardContent className="pt-6">
             <form onSubmit={handleLogin} className="space-y-5">
