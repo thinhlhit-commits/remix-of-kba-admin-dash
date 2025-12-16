@@ -225,7 +225,6 @@ export type Database = {
           cost_center: string
           created_at: string
           created_by: string
-          current_location: string | null
           current_status: Database["public"]["Enums"]["asset_status"]
           depreciation_method:
             | Database["public"]["Enums"]["depreciation_method"]
@@ -256,7 +255,6 @@ export type Database = {
           cost_center: string
           created_at?: string
           created_by: string
-          current_location?: string | null
           current_status?: Database["public"]["Enums"]["asset_status"]
           depreciation_method?:
             | Database["public"]["Enums"]["depreciation_method"]
@@ -287,7 +285,6 @@ export type Database = {
           cost_center?: string
           created_at?: string
           created_by?: string
-          current_location?: string | null
           current_status?: Database["public"]["Enums"]["asset_status"]
           depreciation_method?:
             | Database["public"]["Enums"]["depreciation_method"]
