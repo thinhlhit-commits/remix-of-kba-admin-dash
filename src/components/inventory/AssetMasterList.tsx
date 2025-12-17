@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { RefreshCw, Plus, FileText, Upload, Trash2, Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import { RefreshCw, Plus, FileText, Upload, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,10 +24,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { AssetMasterDialog } from "./AssetMasterDialog";
 import { AssetImportDialog } from "./AssetImportDialog";
 import { ExportButtons } from "@/components/ExportButtons";
@@ -39,13 +42,20 @@ interface AssetMaster {
   id: string;
   asset_id: string;
   asset_name: string;
+  asset_type: string;
   brand: string | null;
   unit: string | null;
-  quantity_supplied_previous: number | null;
-  quantity_requested: number | null;
-  quantity_per_contract: number | null;
-  installation_scope: string | null;
+  sku: string;
+  cost_center: string;
+  cost_basis: number;
+  accumulated_depreciation: number | null;
+  nbv: number | null;
+  current_status: string;
+  depreciation_method: string | null;
+  useful_life_months: number | null;
+  activation_date: string | null;
   notes: string | null;
+  created_at: string;
 }
 
 export function AssetMasterList() {
@@ -53,6 +63,8 @@ export function AssetMasterList() {
   const [assets, setAssets] = useState<AssetMaster[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<AssetMaster | null>(null);
@@ -64,7 +76,7 @@ export function AssetMasterList() {
       setLoading(true);
       const { data, error } = await supabase
         .from("asset_master_data")
-        .select("id, asset_id, asset_name, brand, unit, quantity_supplied_previous, quantity_requested, quantity_per_contract, installation_scope, notes")
+        .select("id, asset_id, asset_name, asset_type, brand, unit, sku, cost_center, cost_basis, accumulated_depreciation, nbv, current_status, depreciation_method, useful_life_months, activation_date, notes, created_at")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -80,16 +92,19 @@ export function AssetMasterList() {
     fetchAssets();
   }, []);
 
-  const filteredAssets = assets.filter((asset) =>
-    Object.values(asset).some((value) =>
+  const filteredAssets = assets.filter((asset) => {
+    const matchesSearch = Object.values(asset).some((value) =>
       String(value).toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  );
+    );
+    const matchesStatus = statusFilter === "all" || asset.current_status === statusFilter;
+    const matchesType = typeFilter === "all" || asset.asset_type === typeFilter;
+    return matchesSearch && matchesStatus && matchesType;
+  });
 
-  // Reset to page 1 when search changes
+  // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery]);
+  }, [searchQuery, statusFilter, typeFilter]);
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredAssets.length / ITEMS_PER_PAGE);
@@ -122,71 +137,94 @@ export function AssetMasterList() {
         .eq("id", deletingAsset.id);
 
       if (error) throw error;
-      toast.success("Đã xóa vật tư thành công");
+      toast.success("Đã xóa tài sản thành công");
       fetchAssets();
     } catch (error: any) {
-      toast.error("Lỗi xóa vật tư: " + error.message);
+      toast.error("Lỗi xóa tài sản: " + error.message);
     } finally {
       setDeletingAsset(null);
     }
   };
 
-  // Calculate derived fields
-  const getCumulativeQuantity = (asset: AssetMaster) => {
-    const prev = Number(asset.quantity_supplied_previous) || 0;
-    const requested = Number(asset.quantity_requested) || 0;
-    return prev + requested;
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      in_stock: "Trong kho",
+      active: "Đang sử dụng",
+      allocated: "Đã phân bổ",
+      under_maintenance: "Đang bảo trì",
+      ready_for_reallocation: "Sẵn sàng tái phân bổ",
+      disposed: "Đã thanh lý",
+    };
+    return labels[status] || status;
   };
 
-  const getRemainingQuantity = (asset: AssetMaster) => {
-    const contract = Number(asset.quantity_per_contract) || 0;
-    const cumulative = getCumulativeQuantity(asset);
-    return contract - cumulative;
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      in_stock: "bg-blue-500",
+      active: "bg-green-500",
+      allocated: "bg-yellow-500",
+      under_maintenance: "bg-orange-500",
+      ready_for_reallocation: "bg-purple-500",
+      disposed: "bg-gray-500",
+    };
+    return colors[status] || "bg-gray-500";
   };
 
-  const getPercentage = (asset: AssetMaster) => {
-    const contract = Number(asset.quantity_per_contract) || 0;
-    if (contract === 0) return 0;
-    const cumulative = getCumulativeQuantity(asset);
-    return (cumulative / contract) * 100;
+  const getTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      equipment: "Thiết bị",
+      tools: "Công cụ",
+      materials: "Vật liệu",
+    };
+    return labels[type] || type;
+  };
+
+  const formatCurrency = (value: number | null) => {
+    if (value == null) return "-";
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(value);
   };
 
   const handleExportAssets = async (format: "excel" | "pdf") => {
     const exportData = filteredAssets.map((asset, index) => ({
       STT: index + 1,
-      "Tên Vật tư, Quy cách": asset.asset_name,
-      "Nhãn hiệu yêu cầu": asset.brand || "",
+      "Mã tài sản": asset.asset_id,
+      "Tên tài sản": asset.asset_name,
+      "Loại tài sản": getTypeLabel(asset.asset_type),
+      "Nhãn hiệu": asset.brand || "",
       "ĐVT": asset.unit || "",
-      "KL đã cấp đến kỳ trước": asset.quantity_supplied_previous || 0,
-      "KL yêu cầu kỳ này": asset.quantity_requested || 0,
-      "KL cộng dồn các kỳ": getCumulativeQuantity(asset),
-      "KL theo HĐ/PL/PS": asset.quantity_per_contract || 0,
-      "Khối lượng còn lại": getRemainingQuantity(asset),
-      "% khối lượng yêu cầu": getPercentage(asset).toFixed(1) + "%",
-      "Phạm vi lắp đặt": asset.installation_scope || "",
+      "SKU": asset.sku,
+      "Trung tâm chi phí": asset.cost_center,
+      "Nguyên giá": asset.cost_basis,
+      "Khấu hao lũy kế": asset.accumulated_depreciation || 0,
+      "Giá trị còn lại": asset.nbv || 0,
+      "Trạng thái": getStatusLabel(asset.current_status),
       "Ghi chú": asset.notes || "",
     }));
 
     const options = {
-      title: "Báo cáo Vật tư",
-      filename: "bao_cao_vat_tu",
+      title: "Danh mục Tài sản",
+      filename: "danh_muc_tai_san",
       columns: [
         { key: "STT", header: "STT" },
-        { key: "Tên Vật tư, Quy cách", header: "Tên Vật tư, Quy cách" },
-        { key: "Nhãn hiệu yêu cầu", header: "Nhãn hiệu yêu cầu" },
+        { key: "Mã tài sản", header: "Mã tài sản" },
+        { key: "Tên tài sản", header: "Tên tài sản" },
+        { key: "Loại tài sản", header: "Loại tài sản" },
+        { key: "Nhãn hiệu", header: "Nhãn hiệu" },
         { key: "ĐVT", header: "ĐVT" },
-        { key: "KL đã cấp đến kỳ trước", header: "KL đã cấp kỳ trước" },
-        { key: "KL yêu cầu kỳ này", header: "KL yêu cầu kỳ này" },
-        { key: "KL cộng dồn các kỳ", header: "KL cộng dồn" },
-        { key: "KL theo HĐ/PL/PS", header: "KL theo HĐ/PL/PS" },
-        { key: "Khối lượng còn lại", header: "KL còn lại" },
-        { key: "% khối lượng yêu cầu", header: "% KL yêu cầu" },
-        { key: "Phạm vi lắp đặt", header: "Phạm vi lắp đặt" },
-        { key: "Ghi chú", header: "Ghi chú" },
+        { key: "Trung tâm chi phí", header: "Trung tâm CP" },
+        { key: "Nguyên giá", header: "Nguyên giá" },
+        { key: "Khấu hao lũy kế", header: "Khấu hao LK" },
+        { key: "Giá trị còn lại", header: "Giá trị còn lại" },
+        { key: "Trạng thái", header: "Trạng thái" },
       ],
       data: exportData,
       summary: [
-        { label: "Tổng số vật tư", value: filteredAssets.length.toString() },
+        { label: "Tổng số tài sản", value: filteredAssets.length.toString() },
+        { label: "Tổng nguyên giá", value: formatCurrency(filteredAssets.reduce((sum, a) => sum + (a.cost_basis || 0), 0)) },
+        { label: "Tổng giá trị còn lại", value: formatCurrency(filteredAssets.reduce((sum, a) => sum + (a.nbv || 0), 0)) },
       ],
     };
     if (format === "excel") {
@@ -199,13 +237,38 @@ export function AssetMasterList() {
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex-1 w-full sm:w-auto">
+        <div className="flex flex-1 gap-2 w-full sm:w-auto flex-wrap">
           <Input
-            placeholder="Tìm kiếm vật tư..."
+            placeholder="Tìm kiếm tài sản..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full"
+            className="flex-1 min-w-[200px]"
           />
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Trạng thái" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả trạng thái</SelectItem>
+              <SelectItem value="in_stock">Trong kho</SelectItem>
+              <SelectItem value="active">Đang sử dụng</SelectItem>
+              <SelectItem value="allocated">Đã phân bổ</SelectItem>
+              <SelectItem value="under_maintenance">Đang bảo trì</SelectItem>
+              <SelectItem value="ready_for_reallocation">Sẵn sàng tái phân bổ</SelectItem>
+              <SelectItem value="disposed">Đã thanh lý</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Loại tài sản" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả loại</SelectItem>
+              <SelectItem value="equipment">Thiết bị</SelectItem>
+              <SelectItem value="tools">Công cụ</SelectItem>
+              <SelectItem value="materials">Vật liệu</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex gap-2 flex-wrap">
           <ExportButtons
@@ -235,7 +298,7 @@ export function AssetMasterList() {
             size="sm"
           >
             <Plus className="h-4 w-4 mr-2" />
-            Thêm Vật tư
+            Thêm Tài sản
           </Button>
         </div>
       </div>
@@ -245,115 +308,79 @@ export function AssetMasterList() {
           <TableHeader>
             <TableRow>
               <TableHead className="w-12">STT</TableHead>
-              <TableHead className="min-w-[200px]">Tên Vật tư, Quy cách</TableHead>
-              <TableHead>Nhãn hiệu yêu cầu</TableHead>
-              <TableHead className="w-16">ĐVT</TableHead>
-              <TableHead className="text-right">KL đã cấp kỳ trước</TableHead>
-              <TableHead className="text-right">KL yêu cầu kỳ này</TableHead>
-              <TableHead className="text-right">KL cộng dồn</TableHead>
-              <TableHead className="text-right">KL theo HĐ/PL/PS</TableHead>
-              <TableHead className="text-right">KL còn lại</TableHead>
-              <TableHead className="text-right">% KL yêu cầu</TableHead>
-              <TableHead>Phạm vi lắp đặt</TableHead>
-              <TableHead>Ghi chú</TableHead>
+              <TableHead>Mã tài sản</TableHead>
+              <TableHead className="min-w-[200px]">Tên tài sản</TableHead>
+              <TableHead>Loại</TableHead>
+              <TableHead>Nhãn hiệu</TableHead>
+              <TableHead>ĐVT</TableHead>
+              <TableHead>Trung tâm CP</TableHead>
+              <TableHead className="text-right">Nguyên giá</TableHead>
+              <TableHead className="text-right">Khấu hao LK</TableHead>
+              <TableHead className="text-right">Giá trị còn lại</TableHead>
+              <TableHead>Trạng thái</TableHead>
               <TableHead className="w-20">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={13} className="text-center py-8">
+                <TableCell colSpan={12} className="text-center py-8">
                   Đang tải...
                 </TableCell>
               </TableRow>
             ) : filteredAssets.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={13} className="text-center py-8">
-                  Chưa có dữ liệu
+                <TableCell colSpan={12} className="text-center py-8">
+                  Chưa có dữ liệu tài sản
                 </TableCell>
               </TableRow>
             ) : (
-              paginatedAssets.map((asset, index) => {
-                const cumulative = getCumulativeQuantity(asset);
-                const remaining = getRemainingQuantity(asset);
-                const percentage = getPercentage(asset);
-                
-                return (
-                  <TableRow key={asset.id}>
-                    <TableCell className="font-medium">{startIndex + index + 1}</TableCell>
-                    <TableCell>{asset.asset_name}</TableCell>
-                    <TableCell>{asset.brand || "-"}</TableCell>
-                    <TableCell>{asset.unit || "-"}</TableCell>
-                    <TableCell className="text-right">
-                      {asset.quantity_supplied_previous || 0}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {asset.quantity_requested || 0}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {cumulative}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {asset.quantity_per_contract || 0}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {remaining}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {percentage.toFixed(1)}%
-                    </TableCell>
-                    <TableCell className="max-w-[120px]">
-                      {asset.installation_scope ? (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <button className="flex items-center gap-1 text-left hover:text-primary transition-colors">
-                              <span className="block max-w-[90px] overflow-hidden text-ellipsis whitespace-nowrap">{asset.installation_scope}</span>
-                              <Eye className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-80 max-h-60 overflow-auto">
-                            <p className="text-sm whitespace-pre-wrap">{asset.installation_scope}</p>
-                          </PopoverContent>
-                        </Popover>
-                      ) : "-"}
-                    </TableCell>
-                    <TableCell className="max-w-[120px]">
-                      {asset.notes ? (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <button className="flex items-center gap-1 text-left hover:text-primary transition-colors">
-                              <span className="block max-w-[90px] overflow-hidden text-ellipsis whitespace-nowrap">{asset.notes}</span>
-                              <Eye className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-80 max-h-60 overflow-auto">
-                            <p className="text-sm whitespace-pre-wrap">{asset.notes}</p>
-                          </PopoverContent>
-                        </Popover>
-                      ) : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(asset)}
-                        >
-                          <FileText className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDeletingAsset(asset)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
+              paginatedAssets.map((asset, index) => (
+                <TableRow key={asset.id}>
+                  <TableCell className="font-medium">{startIndex + index + 1}</TableCell>
+                  <TableCell className="font-mono text-sm">{asset.asset_id}</TableCell>
+                  <TableCell>{asset.asset_name}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{getTypeLabel(asset.asset_type)}</Badge>
+                  </TableCell>
+                  <TableCell>{asset.brand || "-"}</TableCell>
+                  <TableCell>{asset.unit || "-"}</TableCell>
+                  <TableCell>{asset.cost_center}</TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(asset.cost_basis)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(asset.accumulated_depreciation)}
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    {formatCurrency(asset.nbv)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={getStatusColor(asset.current_status)}>
+                      {getStatusLabel(asset.current_status)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(asset)}
+                      >
+                        <FileText className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDeletingAsset(asset)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
             )}
           </TableBody>
         </Table>
@@ -363,7 +390,7 @@ export function AssetMasterList() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Hiển thị {startIndex + 1}-{Math.min(endIndex, filteredAssets.length)} trong tổng số {filteredAssets.length} vật tư
+            Hiển thị {startIndex + 1}-{Math.min(endIndex, filteredAssets.length)} trong tổng số {filteredAssets.length} tài sản
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -424,9 +451,9 @@ export function AssetMasterList() {
       <AlertDialog open={!!deletingAsset} onOpenChange={() => setDeletingAsset(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Xác nhận xóa vật tư</AlertDialogTitle>
+            <AlertDialogTitle>Xác nhận xóa tài sản</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc chắn muốn xóa vật tư "{deletingAsset?.asset_name}"? 
+              Bạn có chắc chắn muốn xóa tài sản "{deletingAsset?.asset_name}"? 
               Hành động này không thể hoàn tác.
             </AlertDialogDescription>
           </AlertDialogHeader>
