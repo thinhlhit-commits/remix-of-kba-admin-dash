@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { RefreshCw, Plus, FileText, Upload, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { RefreshCw, Plus, FileText, Upload, Trash2, ChevronLeft, ChevronRight, Package, Wrench, Box, AlertTriangle } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { AssetMasterDialog } from "./AssetMasterDialog";
 import { AssetImportDialog } from "./AssetImportDialog";
 import { ExportButtons } from "@/components/ExportButtons";
@@ -105,6 +106,22 @@ export function AssetMasterList() {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, statusFilter, typeFilter]);
+
+  // Count statistics
+  const countByStatus = {
+    total: assets.length,
+    in_stock: assets.filter(a => a.current_status === "in_stock").length,
+    active: assets.filter(a => a.current_status === "active").length,
+    allocated: assets.filter(a => a.current_status === "allocated").length,
+    under_maintenance: assets.filter(a => a.current_status === "under_maintenance").length,
+    disposed: assets.filter(a => a.current_status === "disposed").length,
+  };
+
+  const countByType = {
+    equipment: assets.filter(a => a.asset_type === "equipment").length,
+    tools: assets.filter(a => a.asset_type === "tools").length,
+    materials: assets.filter(a => a.asset_type === "materials").length,
+  };
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredAssets.length / ITEMS_PER_PAGE);
@@ -236,6 +253,78 @@ export function AssetMasterList() {
 
   return (
     <div className="space-y-4">
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+        <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-200/50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-500/20 rounded-lg">
+                <Package className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-blue-600">{countByStatus.total}</p>
+                <p className="text-xs text-muted-foreground">Tổng tài sản</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-200/50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-500/20 rounded-lg">
+                <Box className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-green-600">{countByStatus.in_stock}</p>
+                <p className="text-xs text-muted-foreground">Trong kho</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 border-yellow-200/50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-yellow-500/20 rounded-lg">
+                <Wrench className="h-5 w-5 text-yellow-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-yellow-600">{countByStatus.allocated}</p>
+                <p className="text-xs text-muted-foreground">Đã phân bổ</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-orange-500/10 to-orange-600/5 border-orange-200/50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-500/20 rounded-lg">
+                <AlertTriangle className="h-5 w-5 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-orange-600">{countByStatus.under_maintenance}</p>
+                <p className="text-xs text-muted-foreground">Đang bảo trì</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-center">
+              <p className="text-lg font-semibold">{countByType.equipment}</p>
+              <p className="text-xs text-muted-foreground">Thiết bị</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-center">
+              <p className="text-lg font-semibold">{countByType.tools}</p>
+              <p className="text-xs text-muted-foreground">Công cụ</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex flex-1 gap-2 w-full sm:w-auto flex-wrap">
           <Input

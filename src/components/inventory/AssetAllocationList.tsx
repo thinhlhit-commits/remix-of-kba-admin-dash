@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { RefreshCw, Plus, Download, Upload } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { RefreshCw, Plus, Download, Upload, Users, Package, Calendar } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -101,6 +102,11 @@ export function AssetAllocationList() {
     );
   });
 
+  // Count statistics
+  const uniqueAssets = new Set(allocations.map(a => a.asset_master_id)).size;
+  const uniqueEmployees = new Set(allocations.map(a => a.allocated_to)).size;
+  const uniqueProjects = new Set(allocations.filter(a => a.project_id).map(a => a.project_id)).size;
+
   const exportToExcel = () => {
     const exportData = filteredAllocations.map((allocation) => ({
       "Mã Tài sản": allocation.asset_master_data?.asset_id || "",
@@ -139,6 +145,62 @@ export function AssetAllocationList() {
 
   return (
     <div className="space-y-4">
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card className="bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-200/50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-500/20 rounded-lg">
+                <Package className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-green-600">{allocations.length}</p>
+                <p className="text-xs text-muted-foreground">Đang phân bổ</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-500/20 rounded-lg">
+                <Package className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{uniqueAssets}</p>
+                <p className="text-xs text-muted-foreground">Tài sản</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-500/20 rounded-lg">
+                <Users className="h-5 w-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{uniqueEmployees}</p>
+                <p className="text-xs text-muted-foreground">Nhân viên</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-500/20 rounded-lg">
+                <Calendar className="h-5 w-5 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{uniqueProjects}</p>
+                <p className="text-xs text-muted-foreground">Dự án</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex flex-1 gap-2 w-full sm:w-auto">
           <Input
