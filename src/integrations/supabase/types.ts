@@ -112,6 +112,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "asset_allocations_allocated_by_fkey"
+            columns: ["allocated_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_allocations_allocated_to_fkey"
+            columns: ["allocated_to"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "asset_allocations_asset_master_id_fkey"
             columns: ["asset_master_id"]
             isOneToOne: false
