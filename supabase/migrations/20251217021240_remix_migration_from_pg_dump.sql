@@ -1281,7 +1281,7 @@ ALTER TABLE ONLY public.accounting_transactions
 --
 
 ALTER TABLE ONLY public.asset_allocations
-    ADD CONSTRAINT asset_allocations_allocated_by_fkey FOREIGN KEY (allocated_by) REFERENCES auth.users(id);
+    ADD CONSTRAINT asset_allocations_allocated_by_fkey FOREIGN KEY (allocated_by) REFERENCES public.employees(id) ON DELETE SET NULL;
 
 
 --
@@ -1289,7 +1289,7 @@ ALTER TABLE ONLY public.asset_allocations
 --
 
 ALTER TABLE ONLY public.asset_allocations
-    ADD CONSTRAINT asset_allocations_allocated_to_fkey FOREIGN KEY (allocated_to) REFERENCES auth.users(id);
+    ADD CONSTRAINT asset_allocations_allocated_to_fkey FOREIGN KEY (allocated_to) REFERENCES public.employees(id) ON DELETE SET NULL;
 
 
 --
