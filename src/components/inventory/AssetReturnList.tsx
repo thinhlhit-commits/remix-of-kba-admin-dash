@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { RefreshCw, Plus, Download } from "lucide-react";
+import { RefreshCw, ArrowLeft, Download } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -12,6 +12,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { AssetAllocationDialog } from "./AssetAllocationDialog";
@@ -24,8 +31,10 @@ interface AssetAllocation {
   purpose: string;
   allocation_date: string;
   expected_return_date: string | null;
-  project_id: string | null;
+  actual_return_date: string | null;
   status: string;
+  return_condition: string | null;
+  reusability_percentage: number | null;
   asset_master_data: {
     asset_id: string;
     asset_name: string;
@@ -34,16 +43,15 @@ interface AssetAllocation {
     full_name: string;
     position?: string;
   } | null;
-  projects?: {
-    name: string;
-  } | null;
 }
 
-export function AssetAllocationList() {
+export function AssetReturnList() {
   const [allocations, setAllocations] = useState<AssetAllocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("active");
+  const [returnDialogOpen, setReturnDialogOpen] = useState(false);
+  const [selectedAllocation, setSelectedAllocation] = useState<AssetAllocation | null>(null);
 
   const fetchAllocations = async () => {
     try {
@@ -53,10 +61,8 @@ export function AssetAllocationList() {
         .from("asset_allocations")
         .select(`
           *,
-          asset_master_data(asset_id, asset_name),
-          projects(name)
+          asset_master_data(asset_id, asset_name)
         `)
-        .eq("status", "active")
         .order("allocation_date", { ascending: false });
 
       if (allocationsError) throw allocationsError;
@@ -94,9 +100,11 @@ export function AssetAllocationList() {
   }, []);
 
   const filteredAllocations = allocations.filter((allocation) => {
-    return Object.values(allocation).some((value) =>
+    const matchesSearch = Object.values(allocation).some((value) =>
       String(value).toLowerCase().includes(searchQuery.toLowerCase())
     );
+    const matchesStatus = statusFilter === "all" || allocation.status === statusFilter;
+    return matchesSearch && matchesStatus;
   });
 
   const exportToExcel = () => {
@@ -105,28 +113,57 @@ export function AssetAllocationList() {
       "Tên Tài sản": allocation.asset_master_data?.asset_name || "",
       "Người sử dụng": allocation.allocated_to_employee?.full_name || "",
       "Mục đích": allocation.purpose,
-      "Dự án": allocation.projects?.name || "",
       "Ngày phân bổ": format(new Date(allocation.allocation_date), "dd/MM/yyyy"),
       "Hạn hoàn trả": allocation.expected_return_date
         ? format(new Date(allocation.expected_return_date), "dd/MM/yyyy")
         : "",
+      "Ngày hoàn trả thực tế": allocation.actual_return_date
+        ? format(new Date(allocation.actual_return_date), "dd/MM/yyyy")
+        : "",
+      "Trạng thái": getStatusLabel(allocation.status),
+      "Tình trạng hoàn trả": allocation.return_condition || "",
+      "% Tái sử dụng": allocation.reusability_percentage ?? "",
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Phân bổ tài sản");
+    XLSX.utils.book_append_sheet(wb, ws, "Hoàn trả tài sản");
     
     const colWidths = Object.keys(exportData[0] || {}).map((key) => ({
       wch: Math.max(key.length, 15),
     }));
     ws["!cols"] = colWidths;
 
-    XLSX.writeFile(wb, `Phan_bo_tai_san_${format(new Date(), "dd-MM-yyyy")}.xlsx`);
+    XLSX.writeFile(wb, `Hoan_tra_tai_san_${format(new Date(), "dd-MM-yyyy")}.xlsx`);
     toast.success("Xuất file Excel thành công!");
   };
 
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      active: "bg-green-500",
+      returned: "bg-blue-500",
+      overdue: "bg-red-500",
+    };
+    return colors[status] || "bg-gray-500";
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      active: "Đang sử dụng",
+      returned: "Đã hoàn trả",
+      overdue: "Quá hạn",
+    };
+    return labels[status] || status;
+  };
+
+  const handleReturn = (allocation: AssetAllocation) => {
+    setSelectedAllocation(allocation);
+    setReturnDialogOpen(true);
+  };
+
   const handleCloseDialog = () => {
-    setDialogOpen(false);
+    setReturnDialogOpen(false);
+    setSelectedAllocation(null);
     fetchAllocations();
   };
 
@@ -135,11 +172,22 @@ export function AssetAllocationList() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex flex-1 gap-2 w-full sm:w-auto">
           <Input
-            placeholder="Tìm kiếm phân bổ tài sản..."
+            placeholder="Tìm kiếm tài sản cần hoàn trả..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1"
           />
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Lọc trạng thái" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả trạng thái</SelectItem>
+              <SelectItem value="active">Đang sử dụng</SelectItem>
+              <SelectItem value="returned">Đã hoàn trả</SelectItem>
+              <SelectItem value="overdue">Quá hạn</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex gap-2">
           <Button
@@ -160,10 +208,6 @@ export function AssetAllocationList() {
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
             Làm mới
           </Button>
-          <Button onClick={() => setDialogOpen(true)} size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            Phân Bổ Tài sản
-          </Button>
         </div>
       </div>
 
@@ -174,24 +218,26 @@ export function AssetAllocationList() {
               <TableHead>Mã Tài sản</TableHead>
               <TableHead>Tên Tài sản</TableHead>
               <TableHead>Người sử dụng</TableHead>
-              <TableHead>Mục đích</TableHead>
-              <TableHead>Dự án</TableHead>
               <TableHead>Ngày phân bổ</TableHead>
               <TableHead>Hạn hoàn trả</TableHead>
+              <TableHead>Ngày hoàn trả</TableHead>
               <TableHead>Trạng thái</TableHead>
+              <TableHead>Tình trạng</TableHead>
+              <TableHead>% Tái sử dụng</TableHead>
+              <TableHead>Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8">
+                <TableCell colSpan={10} className="text-center py-8">
                   Đang tải...
                 </TableCell>
               </TableRow>
             ) : filteredAllocations.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8">
-                  Chưa có dữ liệu phân bổ
+                <TableCell colSpan={10} className="text-center py-8">
+                  Chưa có dữ liệu
                 </TableCell>
               </TableRow>
             ) : (
@@ -202,8 +248,6 @@ export function AssetAllocationList() {
                   </TableCell>
                   <TableCell>{allocation.asset_master_data?.asset_name}</TableCell>
                   <TableCell>{allocation.allocated_to_employee?.full_name || "-"}</TableCell>
-                  <TableCell>{allocation.purpose}</TableCell>
-                  <TableCell>{allocation.projects?.name || "-"}</TableCell>
                   <TableCell>
                     {format(new Date(allocation.allocation_date), "dd/MM/yyyy")}
                   </TableCell>
@@ -213,7 +257,32 @@ export function AssetAllocationList() {
                       : "-"}
                   </TableCell>
                   <TableCell>
-                    <Badge className="bg-green-500">Đang sử dụng</Badge>
+                    {allocation.actual_return_date
+                      ? format(new Date(allocation.actual_return_date), "dd/MM/yyyy")
+                      : "-"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={getStatusColor(allocation.status)}>
+                      {getStatusLabel(allocation.status)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{allocation.return_condition || "-"}</TableCell>
+                  <TableCell>
+                    {allocation.reusability_percentage != null 
+                      ? `${allocation.reusability_percentage}%` 
+                      : "-"}
+                  </TableCell>
+                  <TableCell>
+                    {allocation.status === "active" || allocation.status === "overdue" ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleReturn(allocation)}
+                      >
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Hoàn trả
+                      </Button>
+                    ) : null}
                   </TableCell>
                 </TableRow>
               ))
@@ -223,9 +292,10 @@ export function AssetAllocationList() {
       </div>
 
       <AssetAllocationDialog
-        open={dialogOpen}
+        open={returnDialogOpen}
         onClose={handleCloseDialog}
-        isReturn={false}
+        isReturn={true}
+        allocation={selectedAllocation}
       />
     </div>
   );
