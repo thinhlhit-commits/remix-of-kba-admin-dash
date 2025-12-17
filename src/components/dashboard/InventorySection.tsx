@@ -11,7 +11,8 @@ import {
   Wrench,
   MapPin,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  ArrowLeftRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +23,7 @@ import { ProductGroupsManager } from "@/components/inventory/ProductGroupsManage
 import { AssetMasterList } from "@/components/inventory/AssetMasterList";
 import { GRNList } from "@/components/inventory/GRNList";
 import { AssetAllocationList } from "@/components/inventory/AssetAllocationList";
+import { AssetReturnList } from "@/components/inventory/AssetReturnList";
 import { DepreciationList } from "@/components/inventory/DepreciationList";
 import { MaintenanceList } from "@/components/inventory/MaintenanceList";
 import { AssetLocationHistory } from "@/components/inventory/AssetLocationHistory";
@@ -37,7 +39,8 @@ export const InventorySection = () => {
     { id: "assets", label: "Tài sản Master", icon: Database, flow: 1 },
     { id: "grn", label: "Phiếu Nhập Kho", icon: FileText, flow: 1 },
     { id: "depreciation", label: "Khấu hao & NBV", icon: TrendingDown, flow: 1 },
-    { id: "allocation", label: "Phân Bổ & Hoàn Trả", icon: UserCog, flow: 2 },
+    { id: "allocation", label: "Phân Bổ Tài sản", icon: UserCog, flow: 2 },
+    { id: "return", label: "Hoàn Trả Tài sản", icon: ArrowLeftRight, flow: 3 },
     { id: "location", label: "Lịch sử Vị trí", icon: MapPin, flow: 2 },
     { id: "maintenance", label: "Bảo trì O&M", icon: Wrench, flow: 2 },
     { id: "disposal", label: "Thanh lý Tài sản", icon: Trash2, flow: 3 },
@@ -197,15 +200,34 @@ export const InventorySection = () => {
                 <div className="flex items-center gap-3">
                   <UserCog className="w-6 h-6 text-primary" />
                   <div>
-                    <CardTitle>Phân Bổ & Hoàn Trả Tài Sản</CardTitle>
+                    <CardTitle>Phân Bổ Tài Sản</CardTitle>
                     <CardDescription>
-                      Luồng 2 & 3: Theo dõi việc bàn giao, sử dụng và hoàn trả
+                      Luồng 2: Bàn giao tài sản cho nhân viên sử dụng
                     </CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <AssetAllocationList />
+              </CardContent>
+            </Card>
+          )}
+
+          {activeTab === "return" && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <ArrowLeftRight className="w-6 h-6 text-primary" />
+                  <div>
+                    <CardTitle>Hoàn Trả Tài Sản</CardTitle>
+                    <CardDescription>
+                      Luồng 3: Quản lý việc hoàn trả tài sản và đánh giá tình trạng
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <AssetReturnList />
               </CardContent>
             </Card>
           )}
