@@ -38,6 +38,7 @@ export function AssetAllocationDialog({
   const [assets, setAssets] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
+  const [currentEmployeeId, setCurrentEmployeeId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     asset_master_id: "",
     allocated_to: "",
@@ -53,8 +54,20 @@ export function AssetAllocationDialog({
       fetchAssets();
       fetchUsers();
       fetchProjects();
+      fetchCurrentEmployee();
     }
   }, [open]);
+
+  // Fetch current user's employee record
+  const fetchCurrentEmployee = async () => {
+    if (!user?.id) return;
+    const { data } = await supabase
+      .from("employees")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    setCurrentEmployeeId(data?.id || null);
+  };
 
   useEffect(() => {
     if (allocation && isReturn) {
@@ -150,6 +163,11 @@ export function AssetAllocationDialog({
         return;
       }
 
+      if (!currentEmployeeId) {
+        toast.error("Không tìm thấy thông tin nhân viên của bạn. Vui lòng liên hệ admin.");
+        return;
+      }
+
       try {
         const { error: insertError } = await supabase
           .from("asset_allocations")
@@ -157,7 +175,7 @@ export function AssetAllocationDialog({
             {
               asset_master_id: formData.asset_master_id,
               allocated_to: formData.allocated_to,
-              allocated_by: user?.id,
+              allocated_by: currentEmployeeId,
               purpose: formData.purpose,
               project_id: formData.project_id || null,
               expected_return_date: formData.expected_return_date || null,
