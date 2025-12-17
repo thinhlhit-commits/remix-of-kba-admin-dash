@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { RefreshCw, ArrowLeft, Download, Upload } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { RefreshCw, ArrowLeft, Download, Upload, CheckCircle, Clock, AlertTriangle } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -109,6 +110,13 @@ export function AssetReturnList() {
     return matchesSearch && matchesStatus;
   });
 
+  // Count statistics
+  const countByStatus = {
+    active: allocations.filter(a => a.status === "active").length,
+    returned: allocations.filter(a => a.status === "returned").length,
+    overdue: allocations.filter(a => a.status === "overdue").length,
+  };
+
   const exportToExcel = () => {
     const exportData = filteredAllocations.map((allocation) => ({
       "Mã Tài sản": allocation.asset_master_data?.asset_id || "",
@@ -176,6 +184,49 @@ export function AssetReturnList() {
 
   return (
     <div className="space-y-4">
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-3 gap-3">
+        <Card className="bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-200/50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-500/20 rounded-lg">
+                <Clock className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-green-600">{countByStatus.active}</p>
+                <p className="text-xs text-muted-foreground">Đang sử dụng</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-200/50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-500/20 rounded-lg">
+                <CheckCircle className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-blue-600">{countByStatus.returned}</p>
+                <p className="text-xs text-muted-foreground">Đã hoàn trả</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-red-500/10 to-red-600/5 border-red-200/50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-500/20 rounded-lg">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-red-600">{countByStatus.overdue}</p>
+                <p className="text-xs text-muted-foreground">Quá hạn</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex flex-1 gap-2 w-full sm:w-auto">
           <Input
