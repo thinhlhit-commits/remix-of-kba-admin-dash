@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { RefreshCw, Plus, Download } from "lucide-react";
+import { RefreshCw, Plus, Download, Upload } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -15,6 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { AssetAllocationDialog } from "./AssetAllocationDialog";
+import { AllocationImportDialog } from "./AllocationImportDialog";
 import * as XLSX from "xlsx";
 
 interface AssetAllocation {
@@ -44,6 +45,7 @@ export function AssetAllocationList() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const fetchAllocations = async () => {
     try {
@@ -130,6 +132,11 @@ export function AssetAllocationList() {
     fetchAllocations();
   };
 
+  const handleCloseImportDialog = () => {
+    setImportDialogOpen(false);
+    fetchAllocations();
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -150,6 +157,14 @@ export function AssetAllocationList() {
           >
             <Download className="h-4 w-4 mr-2" />
             Xuất Excel
+          </Button>
+          <Button
+            onClick={() => setImportDialogOpen(true)}
+            variant="outline"
+            size="sm"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Nhập Excel
           </Button>
           <Button
             onClick={fetchAllocations}
@@ -226,6 +241,11 @@ export function AssetAllocationList() {
         open={dialogOpen}
         onClose={handleCloseDialog}
         isReturn={false}
+      />
+
+      <AllocationImportDialog
+        open={importDialogOpen}
+        onClose={handleCloseImportDialog}
       />
     </div>
   );

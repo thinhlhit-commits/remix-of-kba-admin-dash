@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { RefreshCw, ArrowLeft, Download } from "lucide-react";
+import { RefreshCw, ArrowLeft, Download, Upload } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -22,6 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { AssetAllocationDialog } from "./AssetAllocationDialog";
+import { ReturnImportDialog } from "./ReturnImportDialog";
 import * as XLSX from "xlsx";
 
 interface AssetAllocation {
@@ -51,6 +52,7 @@ export function AssetReturnList() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("active");
   const [returnDialogOpen, setReturnDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [selectedAllocation, setSelectedAllocation] = useState<AssetAllocation | null>(null);
 
   const fetchAllocations = async () => {
@@ -167,6 +169,11 @@ export function AssetReturnList() {
     fetchAllocations();
   };
 
+  const handleCloseImportDialog = () => {
+    setImportDialogOpen(false);
+    fetchAllocations();
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -198,6 +205,14 @@ export function AssetReturnList() {
           >
             <Download className="h-4 w-4 mr-2" />
             Xuất Excel
+          </Button>
+          <Button
+            onClick={() => setImportDialogOpen(true)}
+            variant="outline"
+            size="sm"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Nhập Excel
           </Button>
           <Button
             onClick={fetchAllocations}
@@ -296,6 +311,11 @@ export function AssetReturnList() {
         onClose={handleCloseDialog}
         isReturn={true}
         allocation={selectedAllocation}
+      />
+
+      <ReturnImportDialog
+        open={importDialogOpen}
+        onClose={handleCloseImportDialog}
       />
     </div>
   );
