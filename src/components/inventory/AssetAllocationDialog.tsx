@@ -81,7 +81,10 @@ export function AssetAllocationDialog({
   };
 
   const fetchUsers = async () => {
-    const { data } = await supabase.from("profiles").select("id, full_name");
+    const { data } = await supabase
+      .from("employees")
+      .select("id, full_name, position, department")
+      .order("full_name");
     setUsers(data || []);
   };
 
@@ -233,9 +236,9 @@ export function AssetAllocationDialog({
                     <SelectValue placeholder="Chọn người sử dụng" />
                   </SelectTrigger>
                   <SelectContent>
-                    {users.map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.full_name}
+                    {users.map((emp) => (
+                      <SelectItem key={emp.id} value={emp.id}>
+                        {emp.full_name} {emp.position && `- ${emp.position}`} {emp.department && `(${emp.department})`}
                       </SelectItem>
                     ))}
                   </SelectContent>

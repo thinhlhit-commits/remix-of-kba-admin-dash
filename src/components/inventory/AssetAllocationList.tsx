@@ -39,8 +39,9 @@ interface AssetAllocation {
     asset_id: string;
     asset_name: string;
   } | null;
-  allocated_to_profile?: {
+  allocated_to_employee?: {
     full_name: string;
+    position?: string;
   } | null;
 }
 
@@ -68,32 +69,30 @@ export function AssetAllocationList() {
 
       if (allocationsError) throw allocationsError;
 
-      // Get unique user IDs
-      const userIds = [...new Set((allocationsData || []).map(a => a.allocated_to))];
+      // Get unique employee IDs
+      const employeeIds = [...new Set((allocationsData || []).map(a => a.allocated_to))];
       
-      // Fetch profiles for those users
-      let profilesMap: Record<string, string> = {};
-      if (userIds.length > 0) {
-        const { data: profilesData } = await supabase
-          .from("profiles")
-          .select("id, full_name")
-          .in("id", userIds);
+      // Fetch employees for those IDs
+      let employeesMap: Record<string, { full_name: string; position?: string }> = {};
+      if (employeeIds.length > 0) {
+        const { data: employeesData } = await supabase
+          .from("employees")
+          .select("id, full_name, position")
+          .in("id", employeeIds);
         
-        profilesMap = (profilesData || []).reduce((acc, p) => {
-          acc[p.id] = p.full_name;
+        employeesMap = (employeesData || []).reduce((acc, e) => {
+          acc[e.id] = { full_name: e.full_name, position: e.position || undefined };
           return acc;
-        }, {} as Record<string, string>);
+        }, {} as Record<string, { full_name: string; position?: string }>);
       }
 
-      // Merge allocations with profile names
-      const allocationsWithProfiles = (allocationsData || []).map(allocation => ({
+      // Merge allocations with employee names
+      const allocationsWithEmployees = (allocationsData || []).map(allocation => ({
         ...allocation,
-        allocated_to_profile: profilesMap[allocation.allocated_to] 
-          ? { full_name: profilesMap[allocation.allocated_to] }
-          : null
+        allocated_to_employee: employeesMap[allocation.allocated_to] || null
       }));
 
-      setAllocations(allocationsWithProfiles as any);
+      setAllocations(allocationsWithEmployees as any);
     } catch (error: any) {
       toast.error("Lỗi tải dữ liệu: " + error.message);
     } finally {
@@ -117,7 +116,7 @@ export function AssetAllocationList() {
     const exportData = filteredAllocations.map((allocation) => ({
       "Mã Tài sản": allocation.asset_master_data?.asset_id || "",
       "Tên Tài sản": allocation.asset_master_data?.asset_name || "",
-      "Người sử dụng": allocation.allocated_to_profile?.full_name || "",
+      "Người sử dụng": allocation.allocated_to_employee?.full_name || "",
       "Mục đích": allocation.purpose,
       "Ngày phân bổ": format(new Date(allocation.allocation_date), "dd/MM/yyyy"),
       "Hạn hoàn trả": allocation.expected_return_date
@@ -257,7 +256,7 @@ export function AssetAllocationList() {
                     {allocation.asset_master_data?.asset_id}
                   </TableCell>
                   <TableCell>{allocation.asset_master_data?.asset_name}</TableCell>
-                  <TableCell>{allocation.allocated_to_profile?.full_name || "-"}</TableCell>
+                  <TableCell>{allocation.allocated_to_employee?.full_name || "-"}</TableCell>
                   <TableCell>{allocation.purpose}</TableCell>
                   <TableCell>
                     {format(new Date(allocation.allocation_date), "dd/MM/yyyy")}
