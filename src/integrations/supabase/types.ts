@@ -73,6 +73,7 @@ export type Database = {
           id: string
           project_id: string | null
           purpose: string
+          quantity: number
           return_condition: string | null
           reusability_percentage: number | null
           status: Database["public"]["Enums"]["handover_status"]
@@ -89,6 +90,7 @@ export type Database = {
           id?: string
           project_id?: string | null
           purpose: string
+          quantity?: number
           return_condition?: string | null
           reusability_percentage?: number | null
           status?: Database["public"]["Enums"]["handover_status"]
@@ -105,6 +107,7 @@ export type Database = {
           id?: string
           project_id?: string | null
           purpose?: string
+          quantity?: number
           return_condition?: string | null
           reusability_percentage?: number | null
           status?: Database["public"]["Enums"]["handover_status"]
@@ -230,6 +233,7 @@ export type Database = {
         Row: {
           accumulated_depreciation: number | null
           activation_date: string | null
+          allocated_quantity: number
           amortization_period_months: number | null
           asset_id: string
           asset_name: string
@@ -252,6 +256,7 @@ export type Database = {
           quantity_requested: number | null
           quantity_supplied_previous: number | null
           sku: string
+          stock_quantity: number
           total_maintenance_cost: number | null
           unit: string | null
           updated_at: string
@@ -260,6 +265,7 @@ export type Database = {
         Insert: {
           accumulated_depreciation?: number | null
           activation_date?: string | null
+          allocated_quantity?: number
           amortization_period_months?: number | null
           asset_id: string
           asset_name: string
@@ -282,6 +288,7 @@ export type Database = {
           quantity_requested?: number | null
           quantity_supplied_previous?: number | null
           sku: string
+          stock_quantity?: number
           total_maintenance_cost?: number | null
           unit?: string | null
           updated_at?: string
@@ -290,6 +297,7 @@ export type Database = {
         Update: {
           accumulated_depreciation?: number | null
           activation_date?: string | null
+          allocated_quantity?: number
           amortization_period_months?: number | null
           asset_id?: string
           asset_name?: string
@@ -312,6 +320,7 @@ export type Database = {
           quantity_requested?: number | null
           quantity_supplied_previous?: number | null
           sku?: string
+          stock_quantity?: number
           total_maintenance_cost?: number | null
           unit?: string | null
           updated_at?: string

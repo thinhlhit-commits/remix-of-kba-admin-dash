@@ -54,6 +54,7 @@ export function AssetMasterDialog({
     asset_name: "",
     brand: "",
     unit: "",
+    stock_quantity: "",
     quantity_supplied_previous: "",
     quantity_requested: "",
     quantity_per_contract: "",
@@ -77,6 +78,7 @@ export function AssetMasterDialog({
         asset_name: editingAsset.asset_name || "",
         brand: editingAsset.brand || "",
         unit: editingAsset.unit || "",
+        stock_quantity: editingAsset.stock_quantity?.toString() || "0",
         quantity_supplied_previous: editingAsset.quantity_supplied_previous?.toString() || "",
         quantity_requested: editingAsset.quantity_requested?.toString() || "",
         quantity_per_contract: editingAsset.quantity_per_contract?.toString() || "",
@@ -95,6 +97,7 @@ export function AssetMasterDialog({
       asset_name: "",
       brand: "",
       unit: "",
+      stock_quantity: "",
       quantity_supplied_previous: "",
       quantity_requested: "",
       quantity_per_contract: "",
@@ -203,6 +206,7 @@ export function AssetMasterDialog({
         asset_name: formData.asset_name,
         brand: formData.brand || null,
         unit: formData.unit || null,
+        stock_quantity: parseFloat(formData.stock_quantity) || 0,
         quantity_supplied_previous: parseFloat(formData.quantity_supplied_previous) || 0,
         quantity_requested: parseFloat(formData.quantity_requested) || 0,
         quantity_per_contract: parseFloat(formData.quantity_per_contract) || 0,
@@ -339,7 +343,7 @@ export function AssetMasterDialog({
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="brand">Nhãn hiệu yêu cầu</Label>
                     <Input
@@ -360,6 +364,20 @@ export function AssetMasterDialog({
                         setFormData({ ...formData, unit: e.target.value })
                       }
                       placeholder="VD: Cái, Bộ, M..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="stock_quantity">Số lượng tồn kho <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="stock_quantity"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={formData.stock_quantity}
+                      onChange={(e) =>
+                        setFormData({ ...formData, stock_quantity: e.target.value })
+                      }
+                      placeholder="VD: 50"
                     />
                   </div>
                 </div>

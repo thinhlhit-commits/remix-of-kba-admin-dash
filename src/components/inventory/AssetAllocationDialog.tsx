@@ -47,7 +47,9 @@ export function AssetAllocationDialog({
     expected_return_date: "",
     return_condition: "",
     reusability_percentage: "",
+    quantity: "1",
   });
+  const [selectedAsset, setSelectedAsset] = useState<any>(null);
 
   useEffect(() => {
     if (open) {
@@ -79,6 +81,7 @@ export function AssetAllocationDialog({
         expected_return_date: allocation.expected_return_date || "",
         return_condition: "",
         reusability_percentage: "",
+        quantity: allocation.quantity?.toString() || "1",
       });
     } else {
       resetForm();
@@ -88,8 +91,8 @@ export function AssetAllocationDialog({
   const fetchAssets = async () => {
     const { data } = await supabase
       .from("asset_master_data")
-      .select("id, asset_id, asset_name, current_status")
-      .in("current_status", ["in_stock", "ready_for_reallocation"]);
+      .select("id, asset_id, asset_name, current_status, stock_quantity, allocated_quantity, unit")
+      .gt("stock_quantity", 0);
     setAssets(data || []);
   };
 
@@ -115,7 +118,15 @@ export function AssetAllocationDialog({
       expected_return_date: "",
       return_condition: "",
       reusability_percentage: "",
+      quantity: "1",
     });
+    setSelectedAsset(null);
+  };
+
+  const handleAssetChange = (assetId: string) => {
+    setFormData({ ...formData, asset_master_id: assetId, quantity: "1" });
+    const asset = assets.find(a => a.id === assetId);
+    setSelectedAsset(asset || null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -124,6 +135,8 @@ export function AssetAllocationDialog({
     if (isReturn) {
       // Xử lý hoàn trả
       try {
+        const returnQty = allocation.quantity || 1;
+        
         const { error: updateAllocationError } = await supabase
           .from("asset_allocations")
           .update({
@@ -138,20 +151,34 @@ export function AssetAllocationDialog({
 
         if (updateAllocationError) throw updateAllocationError;
 
-        // Cập nhật trạng thái tài sản
+        // Lấy thông tin tài sản hiện tại
+        const { data: currentAsset } = await supabase
+          .from("asset_master_data")
+          .select("stock_quantity, allocated_quantity")
+          .eq("id", allocation.asset_master_id)
+          .single();
+
+        // Cập nhật số lượng: cộng lại vào kho, trừ từ đã phân bổ
+        const newStockQty = (currentAsset?.stock_quantity || 0) + returnQty;
+        const newAllocatedQty = Math.max(0, (currentAsset?.allocated_quantity || 0) - returnQty);
+        
         const newStatus =
-          parseFloat(formData.reusability_percentage || "0") >= 80
-            ? "ready_for_reallocation"
+          parseFloat(formData.reusability_percentage || "100") >= 80
+            ? "in_stock"
             : "under_maintenance";
 
         const { error: updateAssetError } = await supabase
           .from("asset_master_data")
-          .update({ current_status: newStatus })
+          .update({ 
+            current_status: newStatus,
+            stock_quantity: newStockQty,
+            allocated_quantity: newAllocatedQty
+          })
           .eq("id", allocation.asset_master_id);
 
         if (updateAssetError) throw updateAssetError;
 
-        toast.success("Hoàn trả tài sản thành công");
+        toast.success(`Hoàn trả ${returnQty} đơn vị thành công`);
         onClose();
       } catch (error: any) {
         toast.error("Lỗi: " + error.message);
@@ -168,6 +195,13 @@ export function AssetAllocationDialog({
         return;
       }
 
+      const allocationQty = parseFloat(formData.quantity) || 1;
+      
+      if (!selectedAsset || allocationQty > selectedAsset.stock_quantity) {
+        toast.error(`Số lượng phân bổ vượt quá tồn kho (${selectedAsset?.stock_quantity || 0})`);
+        return;
+      }
+
       try {
         const { error: insertError } = await supabase
           .from("asset_allocations")
@@ -180,20 +214,28 @@ export function AssetAllocationDialog({
               project_id: formData.project_id || null,
               expected_return_date: formData.expected_return_date || null,
               status: "active",
+              quantity: allocationQty,
             },
           ]);
 
         if (insertError) throw insertError;
 
-        // Cập nhật trạng thái tài sản
+        // Cập nhật số lượng tồn kho và đã phân bổ
+        const newStockQty = selectedAsset.stock_quantity - allocationQty;
+        const newAllocatedQty = (selectedAsset.allocated_quantity || 0) + allocationQty;
+        
         const { error: updateError } = await supabase
           .from("asset_master_data")
-          .update({ current_status: "allocated" })
+          .update({ 
+            stock_quantity: newStockQty,
+            allocated_quantity: newAllocatedQty,
+            current_status: newStockQty === 0 ? "allocated" : "in_stock"
+          })
           .eq("id", formData.asset_master_id);
 
         if (updateError) throw updateError;
 
-        toast.success("Phân bổ tài sản thành công");
+        toast.success(`Phân bổ ${allocationQty} ${selectedAsset.unit || 'đơn vị'} thành công`);
         onClose();
       } catch (error: any) {
         toast.error("Lỗi: " + error.message);
@@ -223,9 +265,7 @@ export function AssetAllocationDialog({
                 </Label>
                 <Select
                   value={formData.asset_master_id}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, asset_master_id: value })
-                  }
+                  onValueChange={handleAssetChange}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Chọn tài sản" />
@@ -233,11 +273,46 @@ export function AssetAllocationDialog({
                   <SelectContent>
                     {assets.map((asset) => (
                       <SelectItem key={asset.id} value={asset.id}>
-                        {asset.asset_id} - {asset.asset_name}
+                        {asset.asset_id} - {asset.asset_name} (Tồn: {asset.stock_quantity} {asset.unit || ''})
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {selectedAsset && (
+                <div className="p-3 bg-muted rounded-lg text-sm">
+                  <div className="flex justify-between">
+                    <span>Tồn kho hiện tại:</span>
+                    <span className="font-semibold text-green-600">{selectedAsset.stock_quantity} {selectedAsset.unit || 'đơn vị'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Đã phân bổ:</span>
+                    <span className="font-semibold text-orange-600">{selectedAsset.allocated_quantity || 0} {selectedAsset.unit || 'đơn vị'}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="quantity">
+                  Số lượng phân bổ <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  min="1"
+                  max={selectedAsset?.stock_quantity || 1}
+                  value={formData.quantity}
+                  onChange={(e) =>
+                    setFormData({ ...formData, quantity: e.target.value })
+                  }
+                  placeholder="Nhập số lượng"
+                />
+                {selectedAsset && (
+                  <p className="text-xs text-muted-foreground">
+                    Tối đa: {selectedAsset.stock_quantity} {selectedAsset.unit || 'đơn vị'}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
