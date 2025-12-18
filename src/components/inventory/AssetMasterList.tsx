@@ -57,6 +57,8 @@ interface AssetMaster {
   activation_date: string | null;
   notes: string | null;
   created_at: string;
+  stock_quantity: number;
+  allocated_quantity: number;
 }
 
 export function AssetMasterList() {
@@ -77,7 +79,7 @@ export function AssetMasterList() {
       setLoading(true);
       const { data, error } = await supabase
         .from("asset_master_data")
-        .select("id, asset_id, asset_name, asset_type, brand, unit, sku, cost_center, cost_basis, accumulated_depreciation, nbv, current_status, depreciation_method, useful_life_months, activation_date, notes, created_at")
+        .select("id, asset_id, asset_name, asset_type, brand, unit, sku, cost_center, cost_basis, accumulated_depreciation, nbv, current_status, depreciation_method, useful_life_months, activation_date, notes, created_at, stock_quantity, allocated_quantity")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -402,10 +404,9 @@ export function AssetMasterList() {
               <TableHead>Loại</TableHead>
               <TableHead>Nhãn hiệu</TableHead>
               <TableHead>ĐVT</TableHead>
-              <TableHead>Trung tâm CP</TableHead>
+              <TableHead className="text-right">Tồn kho</TableHead>
+              <TableHead className="text-right">Đã phân bổ</TableHead>
               <TableHead className="text-right">Nguyên giá</TableHead>
-              <TableHead className="text-right">Khấu hao LK</TableHead>
-              <TableHead className="text-right">Giá trị còn lại</TableHead>
               <TableHead>Trạng thái</TableHead>
               <TableHead className="w-20">Thao tác</TableHead>
             </TableRow>
@@ -434,15 +435,14 @@ export function AssetMasterList() {
                   </TableCell>
                   <TableCell>{asset.brand || "-"}</TableCell>
                   <TableCell>{asset.unit || "-"}</TableCell>
-                  <TableCell>{asset.cost_center}</TableCell>
+                  <TableCell className="text-right font-semibold text-green-600">
+                    {asset.stock_quantity || 0}
+                  </TableCell>
+                  <TableCell className="text-right font-semibold text-orange-600">
+                    {asset.allocated_quantity || 0}
+                  </TableCell>
                   <TableCell className="text-right">
                     {formatCurrency(asset.cost_basis)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatCurrency(asset.accumulated_depreciation)}
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {formatCurrency(asset.nbv)}
                   </TableCell>
                   <TableCell>
                     <Badge className={getStatusColor(asset.current_status)}>
