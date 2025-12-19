@@ -35,11 +35,13 @@ interface AssetAllocation {
   expected_return_date: string | null;
   actual_return_date: string | null;
   status: string;
+  quantity: number;
   return_condition: string | null;
   reusability_percentage: number | null;
   asset_master_data: {
     asset_id: string;
     asset_name: string;
+    unit: string | null;
   } | null;
   allocated_to_employee?: {
     full_name: string;
@@ -64,7 +66,7 @@ export function AssetReturnList() {
         .from("asset_allocations")
         .select(`
           *,
-          asset_master_data(asset_id, asset_name)
+          asset_master_data(asset_id, asset_name, unit)
         `)
         .order("allocation_date", { ascending: false });
 
@@ -283,6 +285,7 @@ export function AssetReturnList() {
             <TableRow>
               <TableHead>Mã Tài sản</TableHead>
               <TableHead>Tên Tài sản</TableHead>
+              <TableHead className="text-right">Số lượng</TableHead>
               <TableHead>Người sử dụng</TableHead>
               <TableHead>Ngày phân bổ</TableHead>
               <TableHead>Hạn hoàn trả</TableHead>
@@ -296,13 +299,13 @@ export function AssetReturnList() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-8">
+                <TableCell colSpan={11} className="text-center py-8">
                   Đang tải...
                 </TableCell>
               </TableRow>
             ) : filteredAllocations.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-8">
+                <TableCell colSpan={11} className="text-center py-8">
                   Chưa có dữ liệu
                 </TableCell>
               </TableRow>
@@ -313,6 +316,12 @@ export function AssetReturnList() {
                     {allocation.asset_master_data?.asset_id}
                   </TableCell>
                   <TableCell>{allocation.asset_master_data?.asset_name}</TableCell>
+                  <TableCell className="text-right font-semibold">
+                    {allocation.quantity || 1}
+                    <span className="text-muted-foreground text-xs ml-1">
+                      {allocation.asset_master_data?.unit || "cái"}
+                    </span>
+                  </TableCell>
                   <TableCell>{allocation.allocated_to_employee?.full_name || "-"}</TableCell>
                   <TableCell>
                     {format(new Date(allocation.allocation_date), "dd/MM/yyyy")}

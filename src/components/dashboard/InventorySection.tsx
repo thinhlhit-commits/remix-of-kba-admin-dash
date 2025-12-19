@@ -12,7 +12,8 @@ import {
   MapPin,
   Trash2,
   AlertTriangle,
-  ArrowLeftRight
+  ArrowLeftRight,
+  History
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +25,7 @@ import { AssetMasterList } from "@/components/inventory/AssetMasterList";
 import { GRNList } from "@/components/inventory/GRNList";
 import { AssetAllocationList } from "@/components/inventory/AssetAllocationList";
 import { AssetReturnList } from "@/components/inventory/AssetReturnList";
+import { AssetAllocationHistory } from "@/components/inventory/AssetAllocationHistory";
 import { DepreciationList } from "@/components/inventory/DepreciationList";
 import { MaintenanceList } from "@/components/inventory/MaintenanceList";
 import { AssetLocationHistory } from "@/components/inventory/AssetLocationHistory";
@@ -41,6 +43,7 @@ export const InventorySection = () => {
     { id: "depreciation", label: "Khấu hao & NBV", icon: TrendingDown, flow: 1 },
     { id: "allocation", label: "Phân Bổ Tài sản", icon: UserCog, flow: 2 },
     { id: "return", label: "Hoàn Trả Tài sản", icon: ArrowLeftRight, flow: 3 },
+    { id: "history", label: "Lịch sử Xuất/Nhập", icon: History, flow: 2 },
     { id: "location", label: "Lịch sử Vị trí", icon: MapPin, flow: 2 },
     { id: "maintenance", label: "Bảo trì O&M", icon: Wrench, flow: 2 },
     { id: "disposal", label: "Thanh lý Tài sản", icon: Trash2, flow: 3 },
@@ -228,6 +231,25 @@ export const InventorySection = () => {
               </CardHeader>
               <CardContent>
                 <AssetReturnList />
+              </CardContent>
+            </Card>
+          )}
+
+          {activeTab === "history" && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <History className="w-6 h-6 text-primary" />
+                  <div>
+                    <CardTitle>Lịch sử Phân Bổ & Hoàn Trả</CardTitle>
+                    <CardDescription>
+                      Theo dõi lịch sử xuất/nhập tài sản theo thời gian với số lượng chi tiết
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <AssetAllocationHistory />
               </CardContent>
             </Card>
           )}

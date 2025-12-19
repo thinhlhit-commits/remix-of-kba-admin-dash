@@ -28,9 +28,11 @@ interface AssetAllocation {
   expected_return_date: string | null;
   project_id: string | null;
   status: string;
+  quantity: number;
   asset_master_data: {
     asset_id: string;
     asset_name: string;
+    unit: string | null;
   } | null;
   allocated_to_employee?: {
     full_name: string;
@@ -56,7 +58,7 @@ export function AssetAllocationList() {
         .from("asset_allocations")
         .select(`
           *,
-          asset_master_data(asset_id, asset_name),
+          asset_master_data(asset_id, asset_name, unit),
           projects(name)
         `)
         .eq("status", "active")
@@ -250,6 +252,7 @@ export function AssetAllocationList() {
             <TableRow>
               <TableHead>Mã Tài sản</TableHead>
               <TableHead>Tên Tài sản</TableHead>
+              <TableHead className="text-right">Số lượng</TableHead>
               <TableHead>Người sử dụng</TableHead>
               <TableHead>Mục đích</TableHead>
               <TableHead>Dự án</TableHead>
@@ -261,13 +264,13 @@ export function AssetAllocationList() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8">
+                <TableCell colSpan={9} className="text-center py-8">
                   Đang tải...
                 </TableCell>
               </TableRow>
             ) : filteredAllocations.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8">
+                <TableCell colSpan={9} className="text-center py-8">
                   Chưa có dữ liệu phân bổ
                 </TableCell>
               </TableRow>
@@ -278,6 +281,12 @@ export function AssetAllocationList() {
                     {allocation.asset_master_data?.asset_id}
                   </TableCell>
                   <TableCell>{allocation.asset_master_data?.asset_name}</TableCell>
+                  <TableCell className="text-right font-semibold">
+                    {allocation.quantity || 1}
+                    <span className="text-muted-foreground text-xs ml-1">
+                      {allocation.asset_master_data?.unit || "cái"}
+                    </span>
+                  </TableCell>
                   <TableCell>{allocation.allocated_to_employee?.full_name || "-"}</TableCell>
                   <TableCell>{allocation.purpose}</TableCell>
                   <TableCell>{allocation.projects?.name || "-"}</TableCell>
